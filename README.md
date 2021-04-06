@@ -1,5 +1,5 @@
 # crypten_ms
-Crypten MeanShift Algorithm
+Implementation of a MPC-based Secure MeanShift Algorithm using Crypten
 
 
 ## Requirement
@@ -25,6 +25,10 @@ crypten, scikit-learn, matplotlib
 
 ### Module 2
 
-1. Randomly sample a small set of points
+1. Randomly sample a small set of points as dusts, this step is essential to cut down the polynomial runtime. This would iccur error in the final centroids. According to paper xxx, this approximation is accurate enough with less than 1% error [[1]](#1).
 
-2. Calculate the distance between point and dusts
+2. Calculate the distance between point and dusts. Both are in the form of secret share.
+
+## References
+<a id="1">[1]</a> 
+Cheon, Jung Hee, Duhyeong Kim, and Jai Hyun Park. "Towards a practical cluster analysis over encrypted data." International Conference on Selected Areas in Cryptography. Springer, Cham, 2019.
