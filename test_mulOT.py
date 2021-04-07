@@ -12,6 +12,8 @@ from multiprocess_test_case import MultiProcessTestCase
 import crypten.mpc.primitives.ot.baseOT as baseOT
 
 from crypten.common.rng import generate_kbit_random_tensor, generate_random_ring_element
+
+
 class TestObliviousTransfer(MultiProcessTestCase):
     def test_BaseOT(self):
         ot = baseOT.BaseOT((self.rank + 1) % self.world_size)
