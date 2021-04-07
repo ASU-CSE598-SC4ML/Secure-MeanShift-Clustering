@@ -1,3 +1,8 @@
 {
-    "python.pythonPath": "/home/jingtao1/miniconda3/envs/test_crypten/bin/python"
+    "python.pythonPath": "/home/jingtao1/miniconda3/envs/test_crypten/bin/python",
+    "workbench.colorCustomizations": {
+        "activityBar.background": "#5F0717",
+        "titleBar.activeBackground": "#850A21",
+        "titleBar.activeForeground": "#FFFBFC"
+    }
 }
