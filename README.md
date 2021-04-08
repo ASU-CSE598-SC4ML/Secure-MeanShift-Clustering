@@ -11,6 +11,8 @@ crypten, scikit-learn, matplotlib
 
     conda activate test_crypten
 
+    Disclaimer: otherway to get it working: pip install crypten, and install other dependencies.
+
 ***
 
 ### Module 1
