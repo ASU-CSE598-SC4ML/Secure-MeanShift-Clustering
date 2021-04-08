@@ -15,3 +15,9 @@ if __name__ == '__main__':
     verify = True
     if verify:
         dist_cal1.verify_discal()
+
+    '''Expected output:'''
+    # Ground-Truth Distance is:  0.040053679730797896
+    # Decrypted Distance is:  tensor(0.0400)
+    # Ground-Truth Distance is:  0.0
+    # Decrypted Distance is:  tensor(-1.5259e-05)
