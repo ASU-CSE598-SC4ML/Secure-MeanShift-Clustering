@@ -13,13 +13,12 @@ from mod1_generate import point_gen
 import crypten
 import crypten.mpc as mpc
 import crypten.communicator as comm 
-from os import getpid
 import pickle
-# import crypten.mpc.primitives.ot.baseOT as baseOT
-# from crypten.common.rng import generate_kbit_random_tensor, generate_random_ring_element
-import multiprocessing
-from multiprocessing import Process, Queue
 
+#Example Usage
+    # dist_cal1 = distance_calculation()
+    # dist_cal1.enc()
+    # dist_cal1.discal()
 
 def sample_dust(point_array, n_dusts):
     sample_idx = np.random.choice(point_array.shape[0], n_dusts, replace=False)
@@ -45,7 +44,6 @@ class distance_calculation(object):
             plt.xlim(self.lower_x,  self.upper_x)
             plt.ylim(self.lower_y,  self.upper_y)
             plt.show()
-        self.Q = Queue()
 
     @mpc.run_multiprocess(world_size=2) # Two process will run the identical code below:
     def enc(self, verify = False):
@@ -60,20 +58,26 @@ class distance_calculation(object):
             point_enc = crypten.cryptensor(point, ptype=crypten.ptype.arithmetic)
             point_share_list.append(point_enc)
         if verify:
-            print("=========Start of Verification========")
+            if rank == 0:
+                print("=========Start of Verification========")
             for i in range(self.n_dust):
-                print("Dust to be Encrypted is: ", self.dust_array[i, :])
-                print("Decrypted Dust is: ", dust_share_list[i].get_plain_text())
+                dust_val = dust_share_list[i].get_plain_text()
+                if rank == 0:
+                    print("Dust to be Encrypted is: ", self.dust_array[i, :])
+                    print("Decrypted Dust is: ", dust_val)
             for i in range(self.n_point):
-                print("Point to be Encrypted is: ", self.point_array[i, :])
-                print("Decrypted Point is: ", point_share_list[i].get_plain_text())
-            print("=========End of Verification========")
+                point_val = point_share_list[i].get_plain_text()
+                if rank == 0:
+                    print("Point to be Encrypted is: ", self.point_array[i, :])
+                    print("Decrypted Point is: ", point_val)
+            if rank == 0:
+                print("=========End of Verification========")
         # return dust_share_list, point_share_list, save secret share to file.
         rank = comm.get().get_rank()
         return_dict = {}
         return_dict["dust_share_list_rank{}".format(rank)] = dust_share_list
         return_dict["point_share_list_rank{}".format(rank)] = point_share_list
-        with open('rank_{}.pickle'.format(rank), 'wb') as handle:
+        with open('data_rank_{}.pickle'.format(rank), 'wb') as handle:
             pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
@@ -81,26 +85,84 @@ class distance_calculation(object):
         rank = comm.get().get_rank()
 
         #Receive secret share from enc step.
-        with open('rank_{}.pickle'.format(rank), 'rb') as handle:
+        with open('data_rank_{}.pickle'.format(rank), 'rb') as handle:
             ss_dict = pickle.load(handle)
         dust_share_list = ss_dict["dust_share_list_rank{}".format(rank)]
         point_share_list = ss_dict["point_share_list_rank{}".format(rank)]
-        if verify:
-            print("=========Start of Verification========")
-            for i in range(self.n_dust):
-                print("Dust to be Encrypted is: ", self.dust_array[i, :])
-                print("Decrypted Dust is: ", dust_share_list[i].get_plain_text())
-            for i in range(self.n_point):
-                print("Point to be Encrypted is: ", self.point_array[i, :])
-                print("Decrypted Point is: ", point_share_list[i].get_plain_text())
-            print("=========End of Verification========")
-        
-        # Calculate the distance using the secret share.
-        
 
+        # Verify the correctness of received shares.
+        if verify:
+            if rank == 0:
+                print("=========Start of Verification========")
+            for i in range(self.n_dust):
+                dust_val = dust_share_list[i].get_plain_text()
+                if rank == 0:
+                    print("Dust to be Encrypted is: ", self.dust_array[i, :])
+                    print("Decrypted Dust is: ", dust_val)
+            for i in range(self.n_point):
+                point_val = point_share_list[i].get_plain_text()
+                if rank == 0:
+                    print("Point to be Encrypted is: ", self.point_array[i, :])
+                    print("Decrypted Point is: ", point_val)
+            if rank == 0:
+                print("=========End of Verification========")
+        
+        # Verify distance calculation the secret share.
+        if verify:
+            if rank == 0:
+                print("=========Start of Verification========")
+            true_distance = sum(((point_share_list[0].get_plain_text() - point_share_list[1].get_plain_text())**2))
+            dist_sum = (point_share_list[0] ** 2 +  point_share_list[1] ** 2 - 2 * (point_share_list[0] * point_share_list[1])).sum()
+            dist_sum_val = dist_sum.get_plain_text()
+            if rank == 0:
+                print("Ground-Truth Distance is: ", true_distance)
+                print("Decrypted Distance is: ", dist_sum_val)
+                print("=========End of Verification========")
+
+        #Calculate Distance
+        distance_share_list = []
+        for i in range(self.n_dust):
+            tmp_list = []
+            for j in range(self.n_point):
+                dist_sum = (dust_share_list[i] ** 2 +  point_share_list[j] ** 2 - 2 * (dust_share_list[i] * point_share_list[j])).sum()
+                tmp_list.append(dist_sum)
+            distance_share_list.append(tmp_list)
+
+        #Save Distance
+        return_dict = {}
+        return_dict["distance_share_list_rank{}".format(rank)] = distance_share_list
+        with open('dist_rank_{}.pickle'.format(rank), 'wb') as handle:
+            pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
+    def verify_discal(self):
+        rank = comm.get().get_rank()
+
+        #Receive secret share from distcal step.
+        with open('dist_rank_{}.pickle'.format(rank), 'rb') as handle:
+            dist_dict = pickle.load(handle)
+        distance_share_list = dist_dict["distance_share_list_rank{}".format(rank)]
+
+
+        #Verify each distance
+        if rank == 0:
+            print("=========Start of Verification========")
+        for i in range(self.n_dust):
+            for j in range(self.n_point):
+                if rank == 0:
+                    gt_dist = sum((self.dust_array[i, :] - self.point_array[j, :]) ** 2)
+                    print("Ground-Truth Distance is: ", gt_dist)
+                dist_ss = distance_share_list[i][j].get_plain_text()
+                if rank == 0:
+                    print("Decrypted Distance is: ", dist_ss)
+        if rank == 0:
+            print("=========End of Verification========")
+            
 if __name__ == '__main__':
-    dist_cal1 = distance_calculation()
-    dist_cal1.enc()
-    dist_cal1.discal(True)
+    pass
+    #Example Usage
+    # dist_cal1 = distance_calculation()
+    # dist_cal1.enc()
+    # dist_cal1.discal()
 # %%
 
