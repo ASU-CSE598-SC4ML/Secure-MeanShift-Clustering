@@ -5,13 +5,23 @@ Implementation of a MPC-based Secure MeanShift Algorithm using Crypten
 ## Requirement
 crypten, scikit-learn, matplotlib
 
-### Create Environment from yml. 
+### Create Conda Environment
 
-    conda env create -f env/environment.yml
+    conda create -n crypten python=3.6
 
-    conda activate test_crypten
+    pip install crypten
 
-    Disclaimer: otherway to get it working: pip install crypten, and install other dependencies.
+    pip install scikit-learn
+
+    pip install matplotlib
+
+Disclaimer: Tested on several different Machines.
+
+### To Run
+
+    conda activate crypten
+
+    python main.py
 
 ***
 
@@ -30,6 +40,7 @@ crypten, scikit-learn, matplotlib
 1. Randomly sample a small set of points as dusts, this step is essential to cut down the polynomial runtime. This would iccur error in the final centroids. According to paper xxx, this approximation is accurate enough with less than 1% error [[1]](#1).
 
 2. Calculate the distance between point and dusts. Both are in the form of secret share.
+
 
 ## References
 <a id="1">[1]</a> 
