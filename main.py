@@ -9,7 +9,7 @@ import pickle
 
 
 if __name__ == '__main__':
-    dist_cal1 = distance_calculation()
+    dist_cal1 = distance_calculation(n_point = 2, n_dust = 1, n_center = 1)
     dist_cal1.enc()
     dist_cal1.discal()
     verify = True

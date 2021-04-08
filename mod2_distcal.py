@@ -16,7 +16,7 @@ import crypten.communicator as comm
 import pickle
 
 #Example Usage
-    # dist_cal1 = distance_calculation()
+    # dist_cal1 = distance_calculation(2, 1, 1)
     # dist_cal1.enc()
     # dist_cal1.discal()
 
