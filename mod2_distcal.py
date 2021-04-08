@@ -13,8 +13,12 @@ from mod1_generate import point_gen
 import crypten
 import crypten.mpc as mpc
 import crypten.communicator as comm 
+from os import getpid
+import pickle
 # import crypten.mpc.primitives.ot.baseOT as baseOT
 # from crypten.common.rng import generate_kbit_random_tensor, generate_random_ring_element
+import multiprocessing
+from multiprocessing import Process, Queue
 
 
 def sample_dust(point_array, n_dusts):
@@ -41,26 +45,62 @@ class distance_calculation(object):
             plt.xlim(self.lower_x,  self.upper_x)
             plt.ylim(self.lower_y,  self.upper_y)
             plt.show()
+        self.Q = Queue()
 
-    @mpc.run_multiprocess(world_size=2)
-    def fit(self):
-        #Should return a [n_dust, n_point] array for each of N server (N = 2) 
-        res_share_list = [] #share for server 0 of the [n_dust, n_point] array
+    @mpc.run_multiprocess(world_size=2) # Two process will run the identical code below:
+    def enc(self, verify = False):
+        dust_share_list = []
         for i in range(self.n_dust):
-            dist_share_list = []
             dust = list(self.dust_array[i, :])
-            for j in range(self.n_point):
-                point =  list(self.point_array[j, :])
-                point_enc = crypten.cryptensor(point, ptype=crypten.ptype.arithmetic)
-                dust_enc = crypten.cryptensor(dust, ptype=crypten.ptype.arithmetic)
-                dist_share_list.append(point_enc)
-                # x_enc = crypten.cryptensor([2, 3], ptype=crypten.mpc.binary)
-        res_share_list.append(dist_share_list)
+            dust_enc = crypten.cryptensor(dust, ptype=crypten.ptype.arithmetic)
+            dust_share_list.append(dust_enc)
+        point_share_list = []
+        for i in range(self.n_point):
+            point =  list(self.point_array[i, :])
+            point_enc = crypten.cryptensor(point, ptype=crypten.ptype.arithmetic)
+            point_share_list.append(point_enc)
+        if verify:
+            print("=========Start of Verification========")
+            for i in range(self.n_dust):
+                print("Dust to be Encrypted is: ", self.dust_array[i, :])
+                print("Decrypted Dust is: ", dust_share_list[i].get_plain_text())
+            for i in range(self.n_point):
+                print("Point to be Encrypted is: ", self.point_array[i, :])
+                print("Decrypted Point is: ", point_share_list[i].get_plain_text())
+            print("=========End of Verification========")
+        # return dust_share_list, point_share_list, save secret share to file.
         rank = comm.get().get_rank()
-        print(f"\nRank {rank}:\n {str(res_share_list)}\n")
+        return_dict = {}
+        return_dict["dust_share_list_rank{}".format(rank)] = dust_share_list
+        return_dict["point_share_list_rank{}".format(rank)] = point_share_list
+        with open('rank_{}.pickle'.format(rank), 'wb') as handle:
+            pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
+    def discal(self, verify = False):
+        rank = comm.get().get_rank()
+
+        #Receive secret share from enc step.
+        with open('rank_{}.pickle'.format(rank), 'rb') as handle:
+            ss_dict = pickle.load(handle)
+        dust_share_list = ss_dict["dust_share_list_rank{}".format(rank)]
+        point_share_list = ss_dict["point_share_list_rank{}".format(rank)]
+        if verify:
+            print("=========Start of Verification========")
+            for i in range(self.n_dust):
+                print("Dust to be Encrypted is: ", self.dust_array[i, :])
+                print("Decrypted Dust is: ", dust_share_list[i].get_plain_text())
+            for i in range(self.n_point):
+                print("Point to be Encrypted is: ", self.point_array[i, :])
+                print("Decrypted Point is: ", point_share_list[i].get_plain_text())
+            print("=========End of Verification========")
+        
+        # Calculate the distance using the secret share.
+        
 
 if __name__ == '__main__':
     dist_cal1 = distance_calculation()
-    dist_cal1.fit()
+    dist_cal1.enc()
+    dist_cal1.discal(True)
 # %%
 
