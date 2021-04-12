@@ -47,6 +47,7 @@ class distance_calculation(object):
 
     @mpc.run_multiprocess(world_size=2) # Two process will run the identical code below:
     def enc(self, verify = False):
+        rank = comm.get().get_rank()
         dust_share_list = []
         for i in range(self.n_dust):
             dust = list(self.dust_array[i, :])
@@ -72,8 +73,7 @@ class distance_calculation(object):
                     print("Decrypted Point is: ", point_val)
             if rank == 0:
                 print("=========End of Verification========")
-        # return dust_share_list, point_share_list, save secret share to file.
-        rank = comm.get().get_rank()
+        # return dust_share_list, point_share_list, save secret share to file
         return_dict = {}
         return_dict["dust_share_list_rank{}".format(rank)] = dust_share_list
         return_dict["point_share_list_rank{}".format(rank)] = point_share_list
