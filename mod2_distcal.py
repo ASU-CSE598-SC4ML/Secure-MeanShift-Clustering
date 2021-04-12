@@ -74,12 +74,17 @@ class distance_calculation(object):
                     print("Decrypted Point is: ", point_val)
             if rank == 0:
                 print("=========End of Verification========")
+
         # return dust_share_list, point_share_list, save secret share to file
-        return_dict = {}
-        return_dict["dust_share_list_rank{}".format(rank)] = dust_share_list
-        return_dict["point_share_list_rank{}".format(rank)] = point_share_list
+        return_dict1 = {}
+        return_dict1["point_share_list_rank{}".format(rank)] = point_share_list
         with open('data_rank_{}.pickle'.format(rank), 'wb') as handle:
-            pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(return_dict1, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return_dict2 = {}
+        return_dict2["centroid_share_list_rank{}".format(rank)] = dust_share_list
+        with open('centroid_rank_{}.pickle'.format(rank), 'wb') as handle:
+            pickle.dump(return_dict2, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
     def discal(self, verify = False):
@@ -88,15 +93,18 @@ class distance_calculation(object):
         #Receive secret share from enc step.
         with open('data_rank_{}.pickle'.format(rank), 'rb') as handle:
             ss_dict = pickle.load(handle)
-        dust_share_list = ss_dict["dust_share_list_rank{}".format(rank)]
         point_share_list = ss_dict["point_share_list_rank{}".format(rank)]
 
+        with open('centroid_rank_{}.pickle'.format(rank), 'rb') as handle:
+            ss_dict = pickle.load(handle)
+        centroid_share_list = ss_dict["centroid_share_list_rank{}".format(rank)]
+        
         # Verify the correctness of received shares.
         if verify:
             if rank == 0:
                 print("=========Start of Verification========")
             for i in range(self.n_dust):
-                dust_val = dust_share_list[i].get_plain_text()
+                dust_val = centroid_share_list[i].get_plain_text()
                 if rank == 0:
                     print("Dust to be Encrypted is: ", self.dust_array[i, :])
                     print("Decrypted Dust is: ", dust_val)
@@ -125,7 +133,7 @@ class distance_calculation(object):
         for i in range(self.n_dust):
             tmp_list = []
             for j in range(self.n_point):
-                dist_sum = (dust_share_list[i] ** 2 +  point_share_list[j] ** 2 - 2 * (dust_share_list[i] * point_share_list[j])).sum()
+                dist_sum = (centroid_share_list[i] ** 2 +  point_share_list[j] ** 2 - 2 * (centroid_share_list[i] * point_share_list[j])).sum()
                 tmp_list.append(dist_sum)
             distance_share_list.append(tmp_list)
 

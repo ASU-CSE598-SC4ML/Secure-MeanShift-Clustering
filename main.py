@@ -21,7 +21,7 @@ radius = 0.2
 # Verify Parameters
 Plot_and_GT = True # Show point cloud and ground-truth mean clustering using sklearn
 verify_pointenc = False
-verify_distcal = False
+verify_distcal = True
 verify_compare = False
 
 dist_cal1 = distance_calculation(n_point = n_point, n_dust = n_dust, n_center = n_center, radius = radius, if_plot = Plot_and_GT)
@@ -43,9 +43,6 @@ if verify_distcal:
 # -> next iteration 
 
 # -> if none is updated, break.
-
-
-
 
 compare_radius1 = compare_radius(radius = radius)
 compare_radius1.compare()
