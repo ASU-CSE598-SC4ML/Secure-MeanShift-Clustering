@@ -2,13 +2,87 @@
 #import sys
 #sys.path.insert(0, '/home/q/Documents/CrypTen')
 import numpy as np
-import crypten
 import torch
-
 from crypten.mpc.primitives import BinarySharedTensor
 import crypten.mpc.primitives.circuit as circuit
+import crypten
+import crypten.mpc as mpc
+import crypten.communicator as comm 
+import pickle
+
+class compare_radius(object):
+    def __init__(self,n_point = 2, n_dust = 1,radius=0.1):
+        crypten.init()
+        self.n_point = n_point
+        self.n_dust = n_dust
+        self.radius = radius
+        torch.set_num_threads(1)
+
+    @mpc.run_multiprocess(world_size=2)
+    def compare(self):
+        rank = comm.get().get_rank()
+
+        #Receive secret share from previous function.
+        with open('dist_rank_{}.pickle'.format(rank), 'rb') as handle:
+            dist_dict = pickle.load(handle)
+        dist_enc = dist_dict["distance_share_list_rank{}".format(rank)]
+
+        #temp is the radius
+
+        distance_bool_list = [] 
+        for i in range(self.n_dust):
+            templist = []
+            for j in range(self.n_point):
+                temprad = torch.ones(dist_enc[i][j].shape)*self.radius
+                radius_enc = crypten.cryptensor(temprad, ptype=crypten.ptype.arithmetic)
+                templist.append(dist_enc[i][j]<=radius_enc)
+            distance_bool_list.append(templist)
+            
+        return_dict = {}
+
+        return_dict["distance_results_rank{}".format(rank)] = distance_bool_list
+        with open('compare_results_{}.pickle'.format(rank), 'wb') as handle:
+            pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    
+    @mpc.run_multiprocess(world_size=2)
+    def verify_compare(self):
+        rank = comm.get().get_rank()
+
+        #Receive secret share from distcal step.
+        with open('compare_results_{}.pickle'.format(rank), 'rb') as handle:
+            dist_dict = pickle.load(handle)
+        results_share_list = dist_dict["distance_results_rank{}".format(rank)]
 
 
+        with open('dist_rank_{}.pickle'.format(rank), 'rb') as handle:
+            dist_dict = pickle.load(handle)
+        dist_enc = dist_dict["distance_share_list_rank{}".format(rank)]
+
+        #Verify each distance
+        if rank == 0:
+            print("=========Start of Verification========")
+        for i in range(self.n_dust):
+            for j in range(self.n_point):
+                gt_dist = dist_enc[i][j]
+                radius_tensor = torch.ones(gt_dist.shape)*self.radius
+                gt_calculated = (gt_dist<=radius_tensor).get_plain_text()
+
+                if rank == 0:
+                    print("Ground-Truth is: ", gt_calculated)
+                decrypted = results_share_list[i][j].get_plain_text()
+                if rank == 0:
+                    print("Decrypted is: ", decrypted)
+        if rank == 0:
+            print("=========End of Verification========")
+
+a = compare_radius()
+a.compare()
+a.verify_compare()
+
+#with open('compare_results_1.pickle', 'rb') as handle:
+#    a = pickle.load(handle)
+#    print(a)
+"""
 def check_le_dist(array1, distance):
     #assume array1 is binaryshared
     result = circuit.le(array1, distance)._tensor
@@ -16,7 +90,7 @@ def check_le_dist(array1, distance):
         if result[i]!=0:
             result[i]=1
     return result
-    
+"""  
 """
 def test_function():
     dist=3
