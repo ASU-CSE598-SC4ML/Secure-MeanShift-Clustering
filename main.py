@@ -5,7 +5,7 @@ import crypten
 import crypten.mpc as mpc
 import crypten.communicator as comm 
 import pickle
-
+from check_se_distance import compare_radius
 
 
 if __name__ == '__main__':
@@ -28,10 +28,13 @@ if __name__ == '__main__':
     # -> if none is updated, break.
 
 
-    verify = True
-    if verify:
-        dist_cal1.verify_discal()
+    # verify = True
+    # if verify:
+    #     dist_cal1.verify_discal()
 
+    a = compare_radius()
+    a.compare()
+    a.verify_compare()
     '''Expected output:'''
     # Ground-Truth Distance is:  0.040053679730797896
     # Decrypted Distance is:  tensor(0.0400)
