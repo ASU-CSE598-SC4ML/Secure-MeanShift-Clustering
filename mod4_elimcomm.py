@@ -5,29 +5,32 @@
 # print("Ground-truth centroid is: ", gt_centroid)
 
 import numpy as np
+import numpy as np
 import torch
-from sklearn.cluster import MeanShift
-from matplotlib import pyplot as plt
-import matplotlib.cm as cm
-from mod1_generate import point_gen
+from crypten.mpc.primitives import BinarySharedTensor
+import crypten.mpc.primitives.circuit as circuit
 import crypten
 import crypten.mpc as mpc
 import crypten.communicator as comm 
 import pickle
 
-#Example Usage
-    # dist_cal1 = distance_calculation(2, 1, 1)
-    # dist_cal1.enc()
-    # dist_cal1.discal()
 
-def sample_dust(point_array, n_dusts):
-    sample_idx = np.random.choice(point_array.shape[0], n_dusts, replace=False)
-    return point_array[sample_idx]
+class eliminate_common(object):
+    def __init__(self,n_point = 2, n_dust = 1,radius=0.1):
+        crypten.init()
+        with open('dist_rank_0.pickle', 'rb') as handle:
+            temp_dict = pickle.load(handle)
+        temp_dist_enc = temp_dict["distance_share_list_rank0"]
+        self.n_point = len(temp_dist_enc[0])
+        self.n_dust = len(temp_dist_enc)
+        self.radius = radius
+        torch.set_num_threads(1)
 
 class distance_calculation(object):
-    def __init__(self, n_point = 2, n_dust = 1, n_center = 1, radius = 0.1, if_plot = True):
+    def __init__(self, n_point = 2, n_dust = 1, n_center = 1):
         crypten.init()
         torch.set_num_threads(1)
+        if_plot = True
         self.upper_x = 1
         self.lower_x = 0
         self.upper_y = 1
@@ -35,8 +38,7 @@ class distance_calculation(object):
         self.n_point = n_point
         self.n_dust = n_dust
         self.n_center = n_center
-        self.radius = radius
-        self.point_array, self.gt_centroid = point_gen([self.lower_x,self.upper_x], [self.lower_y,self.upper_y], self.n_center, self.n_point, radius = self.radius, if_plot = if_plot)
+        self.point_array, self.gt_centroid = point_gen([self.lower_x,self.upper_x], [self.lower_y,self.upper_y], self.n_center, self.n_point, if_plot = if_plot)
         self.dust_array = sample_dust(self.point_array, self.n_dust)
         if if_plot:
             x, y = self.dust_array.T
@@ -49,7 +51,6 @@ class distance_calculation(object):
     def enc(self, verify = False):
         rank = comm.get().get_rank()
         dust_share_list = []
-        print(self.dust_array.shape, self.point_array.shape)
         for i in range(self.n_dust):
             dust = list(self.dust_array[i, :])
             dust_enc = crypten.cryptensor(dust, ptype=crypten.ptype.arithmetic)

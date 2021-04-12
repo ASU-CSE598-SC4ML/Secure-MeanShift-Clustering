@@ -11,10 +11,13 @@ import crypten.communicator as comm
 import pickle
 
 class compare_radius(object):
-    def __init__(self,n_point = 2, n_dust = 1,radius=0.1):
+    def __init__(self, radius=0.1):
         crypten.init()
-        self.n_point = n_point
-        self.n_dust = n_dust
+        with open('dist_rank_0.pickle', 'rb') as handle:
+            temp_dict = pickle.load(handle)
+        temp_dist_enc = temp_dict["distance_share_list_rank0"]
+        self.n_point = len(temp_dist_enc[0])
+        self.n_dust = len(temp_dist_enc)
         self.radius = radius
         torch.set_num_threads(1)
 
@@ -26,7 +29,7 @@ class compare_radius(object):
         with open('dist_rank_{}.pickle'.format(rank), 'rb') as handle:
             dist_dict = pickle.load(handle)
         dist_enc = dist_dict["distance_share_list_rank{}".format(rank)]
-
+        
         #temp is the radius
 
         distance_bool_list = [] 
