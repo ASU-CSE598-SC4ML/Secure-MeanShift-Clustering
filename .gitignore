@@ -5,6 +5,7 @@ __pycache__/
 *.code-workspace
 # C extensions
 *.so
+.pickle
 
 # Distribution / packaging
 .Python
