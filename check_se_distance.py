@@ -11,10 +11,13 @@ import crypten.communicator as comm
 import pickle
 
 class compare_radius(object):
-    def __init__(self,n_point = 2, n_dust = 1,radius=0.1):
+    def __init__(self,radius=0.1):
         crypten.init()
-        self.n_point = n_point
-        self.n_dust = n_dust
+        with open('dist_rank_0.pickle', 'rb') as handle:
+            temp_dict = pickle.load(handle)
+        temp_dist_enc = temp_dict["distance_share_list_rank0"]
+        self.n_point = len(temp_dist_enc[0])
+        self.n_dust = len(temp_dist_enc)
         self.radius = radius
         torch.set_num_threads(1)
 
@@ -53,8 +56,8 @@ class compare_radius(object):
         
         return_dict = {}
 
-        return_dict["updated_results_rank{}".format(rank)] = distance_bool_list
-        with open('updated_results_{}.pickle'.format(rank), 'wb') as handle:
+        return_dict["distance_results_rank{}".format(rank)] = distance_bool_list
+        with open('compare_results_{}.pickle'.format(rank), 'wb') as handle:
             pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
     @mpc.run_multiprocess(world_size=2)

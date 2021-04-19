@@ -5,6 +5,7 @@ __pycache__/
 *.code-workspace
 # C extensions
 *.so
+*.pickle
 
 # Distribution / packaging
 .Python
@@ -126,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+#test script
+test.py

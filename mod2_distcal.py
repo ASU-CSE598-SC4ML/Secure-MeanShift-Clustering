@@ -25,10 +25,9 @@ def sample_dust(point_array, n_dusts):
     return point_array[sample_idx]
 
 class distance_calculation(object):
-    def __init__(self, n_point = 2, n_dust = 1, n_center = 1):
+    def __init__(self, n_point = 2, n_dust = 1, n_center = 1, radius = 0.1, if_plot = True):
         crypten.init()
         torch.set_num_threads(1)
-        if_plot = True
         self.upper_x = 1
         self.lower_x = 0
         self.upper_y = 1
@@ -36,7 +35,8 @@ class distance_calculation(object):
         self.n_point = n_point
         self.n_dust = n_dust
         self.n_center = n_center
-        self.point_array, self.gt_centroid = point_gen([self.lower_x,self.upper_x], [self.lower_y,self.upper_y], self.n_center, self.n_point, if_plot = if_plot)
+        self.radius = radius
+        self.point_array, self.gt_centroid = point_gen([self.lower_x,self.upper_x], [self.lower_y,self.upper_y], self.n_center, self.n_point, radius = self.radius, if_plot = if_plot)
         self.dust_array = sample_dust(self.point_array, self.n_dust)
         if if_plot:
             x, y = self.dust_array.T
@@ -47,7 +47,9 @@ class distance_calculation(object):
 
     @mpc.run_multiprocess(world_size=2) # Two process will run the identical code below:
     def enc(self, verify = False):
+        rank = comm.get().get_rank()
         dust_share_list = []
+        print(self.dust_array.shape, self.point_array.shape)
         for i in range(self.n_dust):
             dust = list(self.dust_array[i, :])
             dust_enc = crypten.cryptensor(dust, ptype=crypten.ptype.arithmetic)
@@ -72,13 +74,17 @@ class distance_calculation(object):
                     print("Decrypted Point is: ", point_val)
             if rank == 0:
                 print("=========End of Verification========")
-        # return dust_share_list, point_share_list, save secret share to file.
-        rank = comm.get().get_rank()
-        return_dict = {}
-        return_dict["dust_share_list_rank{}".format(rank)] = dust_share_list
-        return_dict["point_share_list_rank{}".format(rank)] = point_share_list
+
+        # return dust_share_list, point_share_list, save secret share to file
+        return_dict1 = {}
+        return_dict1["point_share_list_rank{}".format(rank)] = point_share_list
         with open('data_rank_{}.pickle'.format(rank), 'wb') as handle:
-            pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(return_dict1, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return_dict2 = {}
+        return_dict2["centroid_share_list_rank{}".format(rank)] = dust_share_list
+        with open('centroid_rank_{}.pickle'.format(rank), 'wb') as handle:
+            pickle.dump(return_dict2, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
     def discal(self, verify = False):
@@ -87,15 +93,18 @@ class distance_calculation(object):
         #Receive secret share from enc step.
         with open('data_rank_{}.pickle'.format(rank), 'rb') as handle:
             ss_dict = pickle.load(handle)
-        dust_share_list = ss_dict["dust_share_list_rank{}".format(rank)]
         point_share_list = ss_dict["point_share_list_rank{}".format(rank)]
 
+        with open('centroid_rank_{}.pickle'.format(rank), 'rb') as handle:
+            ss_dict = pickle.load(handle)
+        centroid_share_list = ss_dict["centroid_share_list_rank{}".format(rank)]
+        
         # Verify the correctness of received shares.
         if verify:
             if rank == 0:
                 print("=========Start of Verification========")
             for i in range(self.n_dust):
-                dust_val = dust_share_list[i].get_plain_text()
+                dust_val = centroid_share_list[i].get_plain_text()
                 if rank == 0:
                     print("Dust to be Encrypted is: ", self.dust_array[i, :])
                     print("Decrypted Dust is: ", dust_val)
@@ -124,7 +133,7 @@ class distance_calculation(object):
         for i in range(self.n_dust):
             tmp_list = []
             for j in range(self.n_point):
-                dist_sum = (dust_share_list[i] ** 2 +  point_share_list[j] ** 2 - 2 * (dust_share_list[i] * point_share_list[j])).sum()
+                dist_sum = (centroid_share_list[i] ** 2 +  point_share_list[j] ** 2 - 2 * (centroid_share_list[i] * point_share_list[j])).sum()
                 tmp_list.append(dist_sum)
             distance_share_list.append(tmp_list)
 
