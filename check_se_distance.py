@@ -19,29 +19,42 @@ class compare_radius(object):
         torch.set_num_threads(1)
 
     @mpc.run_multiprocess(world_size=2)
-    def compare(self):
+    def compare(self, debug=True):
         rank = comm.get().get_rank()
-
         #Receive secret share from previous function.
         with open('dist_rank_{}.pickle'.format(rank), 'rb') as handle:
             dist_dict = pickle.load(handle)
         dist_enc = dist_dict["distance_share_list_rank{}".format(rank)]
 
+        with open('data_rank_{}.pickle'.format(rank), 'rb') as handle:
+            data_dict = pickle.load(handle)
+        dust_enc = data_dict["dust_share_list_rank{}".format(rank)]
+        point_enc = data_dict["point_share_list_rank{}".format(rank)]
         #temp is the radius
-
-        distance_bool_list = [] 
+        updated_dust_list = []
+        distance_bool_list = []
+        changed = False
         for i in range(self.n_dust):
             templist = []
             for j in range(self.n_point):
                 temprad = torch.ones(dist_enc[i][j].shape)*self.radius
+                #create shared radius ([r,r,r,r....])
                 radius_enc = crypten.cryptensor(temprad, ptype=crypten.ptype.arithmetic)
-                templist.append(dist_enc[i][j]<=radius_enc)
-            distance_bool_list.append(templist)
-            
+                #calculates if point is 
+                temp_bool = dist_enc[i][j]<=radius_enc
+                updated_centroid = ((point_enc[i][j]*temp_bool).sum())/temp_bool.sum()
+                templist.append(updated_centroid)
+                if (updated_centroid!=dust_enc[i][j]).get_plain_text().item():
+                    changed = True
+                    if debug:
+                        print(updated_centroid)
+                        print(dust_enc[i][j])
+            updated_dust_list.append(templist)
+        
         return_dict = {}
 
-        return_dict["distance_results_rank{}".format(rank)] = distance_bool_list
-        with open('compare_results_{}.pickle'.format(rank), 'wb') as handle:
+        return_dict["updated_results_rank{}".format(rank)] = distance_bool_list
+        with open('updated_results_{}.pickle'.format(rank), 'wb') as handle:
             pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
     @mpc.run_multiprocess(world_size=2)
