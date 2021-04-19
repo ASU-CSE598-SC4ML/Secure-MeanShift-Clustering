@@ -43,10 +43,14 @@ class compare_radius(object):
                 temprad = torch.ones(dist_enc[i][j].shape)*self.radius
                 #create shared radius ([r,r,r,r....])
                 radius_enc = crypten.cryptensor(temprad, ptype=crypten.ptype.arithmetic)
-                #calculates if point is 
+                #calculates if point distance is le radius
                 temp_bool = dist_enc[i][j]<=radius_enc
-                updated_centroid = ((point_enc[i][j]*temp_bool).sum())/temp_bool.sum()
+                #multiply point value with 0/1 matrix, and sum them up, divide by sum of 0/1 matrix
+                #result should be the updated centroid location
+                #I am not sure if it works on more than 1D, will test
+                updated_centroid = ((point_enc[i][j]*temp_bool).sum(0))/temp_bool.sum()
                 templist.append(updated_centroid)
+                #get plain text of ne, if is 1(not equal) then set changed
                 if (updated_centroid!=dust_enc[i][j]).get_plain_text().item():
                     changed = True
                     if debug:
