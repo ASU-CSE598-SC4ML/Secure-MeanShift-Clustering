@@ -60,6 +60,7 @@ class compare_radius(object):
         with open('compare_results_{}.pickle'.format(rank), 'wb') as handle:
             pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
+    #The verify is still incorrect, I'll fix it and test if the code works correctly
     @mpc.run_multiprocess(world_size=2)
     def verify_compare(self):
         rank = comm.get().get_rank()
