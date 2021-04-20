@@ -30,47 +30,49 @@ class compare_radius(object):
         dist_enc = dist_dict["distance_share_list_rank{}".format(rank)]
 
         with open('data_rank_{}.pickle'.format(rank), 'rb') as handle:
-            data_dict = pickle.load(handle)
-        dust_enc = data_dict["dust_share_list_rank{}".format(rank)]
-        point_enc = data_dict["point_share_list_rank{}".format(rank)]
+            ss_dict = pickle.load(handle)
+        point_enc = ss_dict["point_share_list_rank{}".format(rank)]
+
+        with open('centroid_rank_{}.pickle'.format(rank), 'rb') as handle:
+            ss_dict = pickle.load(handle)
+        dust_enc = ss_dict["centroid_share_list_rank{}".format(rank)]
+
         #temp is the radius
-        updated_dust_list = []
         distance_bool_list = []
         changed = False
         for i in range(self.n_dust):
             templist = []
-            for j in range(self.n_point):
-                temprad = torch.ones(dist_enc[i][j].shape)*self.radius
-                
-                #create shared radius ([r,r,r,r....])
-                radius_enc = crypten.cryptensor(temprad, ptype=crypten.ptype.arithmetic)
-                
-                #calculates if point distance is le radius
-                temp_bool = dist_enc[i][j]<=radius_enc
-                
-                #multiply point value with 0/1 matrix, 
-                #result should be the updated centroid location
-                temp_pts = crypten.cryptensor(torch.ones(point_enc[i][j].shape))
-                for i in range(point_enc.shape[0]):
-                    temp_pts[i] = enc_pts[i,:]*temp_bool[i]
-                
-                #sum them up, divide by sum of 0/1 matrix
-                updated_centroid = (temp_pts.sum(0))/temp_bool.sum()
-                #get plain text of ne, if is 1(not equal) then set changed
-                if (updated_centroid!=dust_enc[i][j]).get_plain_text().item():
-                    #if changed, set flag and change dust
-                    changed = True
-                    dust_enc[i][j] = updated_centroid
-                    if debug:
-                        print(updated_centroid)
-                        print(dust_enc[i][j])
+            temprad = torch.ones(dist_enc[i].shape)*self.radius
+            
+            #create shared radius ([r,r,r,r....])
+            radius_enc = crypten.cryptensor(temprad, ptype=crypten.ptype.arithmetic)
+            
+            #calculates if point distance is le radius
+            temp_bool = dist_enc[i]<=radius_enc
+            
+            #multiply point value with 0/1 matrix, 
+            #result should be the updated centroid location
+            temp_pts = crypten.cryptensor(torch.ones(point_enc[i].shape))
+            for i in range(point_enc.shape[0]):
+                temp_pts[i] = enc_pts[i,:]*temp_bool[i]
+            
+            #sum them up, divide by sum of 0/1 matrix
+            updated_centroid = (temp_pts.sum(0))/temp_bool.sum()
+            #get plain text of ne, if is 1(not equal) then set changed
+            if (updated_centroid!=dust_enc[i]).get_plain_text().item():
+                #if changed, set flag and change dust
+                changed = True
+                dust_enc[i] = updated_centroid
+                if debug:
+                    print(updated_centroid)
+                    print(dust_enc[i])]
             updated_dust_list.append(templist)
         
         #if changed, then update the data file with new dust
         if changed:
-            data_dict["dust_share_list_rank{}".format(rank)] = dust_enc
-            with open('data_rank_{}.pickle'.format(rank), 'wb') as handle:
-                pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            ss_dict["centroid_share_list_rank{}".format(rank)]= dust_enc
+            with open('centroid_rank_{}.pickle'.format(rank), 'wb') as handle:
+                pickle.dump(ss_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
         with open('result.pickle', 'wb') as handle:
                 pickle.dump(changed, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
