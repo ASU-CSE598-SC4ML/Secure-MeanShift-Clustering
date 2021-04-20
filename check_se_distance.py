@@ -41,28 +41,38 @@ class compare_radius(object):
             templist = []
             for j in range(self.n_point):
                 temprad = torch.ones(dist_enc[i][j].shape)*self.radius
+                
                 #create shared radius ([r,r,r,r....])
                 radius_enc = crypten.cryptensor(temprad, ptype=crypten.ptype.arithmetic)
+                
                 #calculates if point distance is le radius
                 temp_bool = dist_enc[i][j]<=radius_enc
-                #multiply point value with 0/1 matrix, and sum them up, divide by sum of 0/1 matrix
+                
+                #multiply point value with 0/1 matrix, 
                 #result should be the updated centroid location
-                #I am not sure if it works on more than 1D, will test
-                updated_centroid = ((point_enc[i][j]*temp_bool).sum(0))/temp_bool.sum()
-                templist.append(updated_centroid)
+                temp_pts = crypten.cryptensor(torch.ones(point_enc[i][j].shape))
+                for i in range(point_enc.shape[0]):
+                    temp_pts[i] = enc_pts[i,:]*temp_bool[i]
+                
+                #sum them up, divide by sum of 0/1 matrix
+                updated_centroid = (temp_pts.sum(0))/temp_bool.sum()
                 #get plain text of ne, if is 1(not equal) then set changed
                 if (updated_centroid!=dust_enc[i][j]).get_plain_text().item():
+                    #if changed, set flag and change dust
                     changed = True
+                    dust_enc[i][j] = updated_centroid
                     if debug:
                         print(updated_centroid)
                         print(dust_enc[i][j])
             updated_dust_list.append(templist)
         
-        return_dict = {}
-
-        return_dict["distance_results_rank{}".format(rank)] = distance_bool_list
-        with open('compare_results_{}.pickle'.format(rank), 'wb') as handle:
-            pickle.dump(return_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        #if changed, then update the data file with new dust
+        if changed:
+            data_dict["dust_share_list_rank{}".format(rank)] = dust_enc
+            with open('data_rank_{}.pickle'.format(rank), 'wb') as handle:
+                pickle.dump(data_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open('result.pickle', 'wb') as handle:
+                pickle.dump(changed, handle, protocol=pickle.HIGHEST_PROTOCOL)
     
     #The verify is still incorrect, I'll fix it and test if the code works correctly
     @mpc.run_multiprocess(world_size=2)
@@ -89,10 +99,10 @@ class compare_radius(object):
                 gt_calculated = (gt_dist<=radius_tensor).get_plain_text()
 
                 if rank == 0:
-                    print("Ground-Truth is: ", gt_calculated)
+                    print("Ground-Truth is: not implemented")
                 decrypted = results_share_list[i][j].get_plain_text()
                 if rank == 0:
-                    print("Decrypted is: ", decrypted)
+                    print("Decrypted is: not implemented")
         if rank == 0:
             print("=========End of Verification========")
 
