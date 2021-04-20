@@ -42,7 +42,7 @@ class compare_radius(object):
         changed = False
         for i in range(self.n_dust):
             templist = []
-            temprad = torch.ones(dist_enc[i].shape)*self.radius
+            temprad = torch.ones(len(dist_enc[i]))*self.radius
             
             #create shared radius ([r,r,r,r....])
             radius_enc = crypten.cryptensor(temprad, ptype=crypten.ptype.arithmetic)
@@ -65,7 +65,7 @@ class compare_radius(object):
                 dust_enc[i] = updated_centroid
                 if debug:
                     print(updated_centroid)
-                    print(dust_enc[i])]
+                    print(dust_enc[i])
             updated_dust_list.append(templist)
         
         #if changed, then update the data file with new dust
@@ -107,10 +107,6 @@ class compare_radius(object):
                     print("Decrypted is: not implemented")
         if rank == 0:
             print("=========End of Verification========")
-
-a = compare_radius()
-a.compare()
-a.verify_compare()
 
 #with open('compare_results_1.pickle', 'rb') as handle:
 #    a = pickle.load(handle)
