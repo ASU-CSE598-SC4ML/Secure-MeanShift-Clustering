@@ -61,10 +61,11 @@ class meanshift(object):
 
 
 if __name__ == '__main__':
-    n_point = 200
+    n_point = 100
+    n_dust = 8
     radius = 0.1
     point_array = point_gen([0.0,1.0], [0.0,1.0], n_centers = 8, n_points = n_point, radius = radius, if_plot = True)
-    ms = meanshift(point_array, radius)
+    ms = meanshift(point_array, radius, n_dust)
     start_time = time.time()
     plain_centroid = ms.fit()
     print("time cost is ", time.time() - start_time)
