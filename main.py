@@ -32,32 +32,34 @@ class meanshift(object):
         dist_cal1.enc(self.verify_pointenc)
         i = 0
         max_iter = 20
+        iter_time_list = []
         while (i < max_iter):
-            # start by dist cal with the current n_dust
+            
             dist_cal1.print_centroid()
-
+            start_time = time.time()
+            # start by dist cal with the current n_dust
             dist_cal1.discal(self.verify_distcal)
-            
+            dist_cal_time = time.time() - start_time
             compare_radius1.compare()
-            
+            compare_radius_time = time.time() - start_time - dist_cal_time
             with open('result.pickle', 'rb') as handle:
                 if_exit = pickle.load(handle)
 
             if not if_exit:
                 break
-            else:
-                print("centroids are updated!")
             
             eliminate_common1.eliminate()
             #update n_dust
+            iter_time = time.time() - start_time
+            print("iter {} - time cost is {:1.4f}s (dist: {:1.4f}s/compare: {:1.4f}s)".format(i, iter_time, dist_cal_time, compare_radius_time))
+            iter_time_list.append(iter_time)
             i += 1
-
         dist_cal1.get_plain_centroid()
         with open('plain_centroid.pickle', 'rb') as handle:
             plain_centroid = np.asarray(pickle.load(handle))
         
 
-        return plain_centroid
+        return plain_centroid, iter_time_list
 
 
 if __name__ == '__main__':
@@ -66,9 +68,9 @@ if __name__ == '__main__':
     radius = 0.1
     point_array = point_gen([0.0,1.0], [0.0,1.0], n_centers = 8, n_points = n_point, radius = radius, if_plot = True)
     ms = meanshift(point_array, radius, n_dust)
-    start_time = time.time()
-    plain_centroid = ms.fit()
-    print("time cost is ", time.time() - start_time)
+    plain_centroid, iter_time_list = ms.fit()
+    print("Overall time cost is {:1.4f}s for total of {} iterations!".format(sum(iter_time_list), len(iter_time_list)))
+    print("Average time cost per iteration is {:1.4f}s!".format(sum(iter_time_list)/len(iter_time_list)))
 
     #Call sklearn meanshift to get the ground-truth centroids
     clustering = MeanShift(bandwidth=0.2).fit(point_array)
