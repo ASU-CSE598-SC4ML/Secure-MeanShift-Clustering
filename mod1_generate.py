@@ -40,16 +40,16 @@ def point_gen(range_x, range_y, n_centers, n_points, radius = 0.1, if_plot = Fal
         
 
     #Call sklearn meanshift to get the ground-truth centroids
-    clustering = MeanShift(bandwidth=radius).fit(point_array)
+    clustering = MeanShift(bandwidth=0.2).fit(point_array)
 
     #Plot Ground-Truth Clustering Center
     gt_centroid = clustering.cluster_centers_
-    if if_plot:
-        x, y = gt_centroid.T
-        plt.scatter(x, y, marker="X", s=256, color = "k")
-        plt.xlim(lower_x,  upper_x)
-        plt.ylim(lower_y,  upper_y)
-        plt.show()
+    # if if_plot:
+    #     x, y = gt_centroid.T
+    #     plt.scatter(x, y, marker="X", s=256, color = "k")
+    #     plt.xlim(lower_x,  upper_x)
+    #     plt.ylim(lower_y,  upper_y)
+    #     plt.show()
     return point_array, gt_centroid
 
 #Example Usage

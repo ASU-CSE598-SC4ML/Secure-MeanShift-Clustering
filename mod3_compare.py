@@ -11,31 +11,31 @@ import crypten.communicator as comm
 import pickle
 
 class compare_radius(object):
-    def __init__(self,radius=0.1):
+    def __init__(self, radius, n_point):
         crypten.init()
-        with open('dist_rank_0.pickle', 'rb') as handle:
-            temp_dict = pickle.load(handle)
-        temp_dist_enc = temp_dict["distance_share_list_rank0"]
-        self.n_point = len(temp_dist_enc[0])
-        self.n_dust = len(temp_dist_enc)
+        self.n_point = n_point
         self.radius = radius
         torch.set_num_threads(1)
 
     @mpc.run_multiprocess(world_size=2)
-    def compare(self, debug=True):
+    def compare(self, debug=False):
         rank = comm.get().get_rank()
+
         #Receive secret share from previous function.
         with open('dist_rank_{}.pickle'.format(rank), 'rb') as handle:
             dist_dict = pickle.load(handle)
         dist_enc = dist_dict["distance_share_list_rank{}".format(rank)]
-        dist_enc_new = crypten.cryptensor(torch.ones(self.n_dust, self.n_point))
-        for i in range(self.n_dust):
+        n_dust = len(dist_enc)
+
+        dist_enc_new = crypten.cryptensor(torch.ones(n_dust, self.n_point))
+        for i in range(n_dust):
             for j in range(self.n_point):
                 dist_enc_new[i,j]=dist_enc[i][j]
 
         with open('data_rank_{}.pickle'.format(rank), 'rb') as handle:
             ss_dict = pickle.load(handle)
         point_enc = ss_dict["point_share_list_rank{}".format(rank)]
+
         point_enc_new = crypten.cryptensor(torch.ones(self.n_point, 2))
         for i in range(self.n_point):
             point_enc_new[i,:]=point_enc[i][:]
@@ -43,14 +43,17 @@ class compare_radius(object):
         with open('centroid_rank_{}.pickle'.format(rank), 'rb') as handle:
             ss_dict = pickle.load(handle)
         dust_enc = ss_dict["centroid_share_list_rank{}".format(rank)]
-        dust_enc_new = crypten.cryptensor(torch.ones(self.n_dust, 2))
-        for i in range(self.n_dust):
+
+        dust_enc_new = crypten.cryptensor(torch.ones(n_dust, 2))
+        for i in range(n_dust):
             dust_enc_new[i,:]=dust_enc[i][:]
+
 
         #temp is the radius
         distance_bool_list = []
         changed = False
-        for i in range(self.n_dust):
+        total_udpate_volume = 0
+        for i in range(n_dust):
             templist = []
             temprad = torch.ones(len(dist_enc[i]))*self.radius
             
@@ -77,27 +80,34 @@ class compare_radius(object):
                     print(a)
                     print(b)"""
             #get plain text of ne, if is 1(not equal) then set changed
-            changetemp = (updated_centroid!=dust_enc_new[i,:]).get_plain_text().sum().item()
-            if (changetemp):
-                #if changed, set flag and change dust
-                changed = True
-                if debug:
-                    a = updated_centroid.get_plain_text()
-                    b = dust_enc_new[i,:].get_plain_text()
-                    if rank==0:
-                        print("a and b:")
-                        print(a)
-                        print(b)
-                dust_enc[i] = updated_centroid
-        
+            # udpate_volume = (updated_centroid - dust_enc_new[i,:]).get_plain_text().sum().item()
+            # print((updated_centroid - dust_enc_new[i,:]).get_plain_text().sum().item())
+            total_udpate_volume += (updated_centroid - dust_enc_new[i,:]).get_plain_text().sum().item()
+            # changetemp = (updated_centroid!=dust_enc_new[i,:]).get_plain_text().sum().item()
+            # if (changetemp):
+            #     #if changed, set flag and change dust
+            #     changed = True
+            #     if debug:
+            #         a = updated_centroid.get_plain_text()
+            #         b = dust_enc_new[i,:].get_plain_text()
+            #         if rank==0:
+            #             print("a and b:")
+            #             print(a)
+            #             print(b)
+            dust_enc[i] = updated_centroid
+        # print(np.abs(total_udpate_volume))
+        if np.abs(total_udpate_volume) > 5e-5:
+            changed = True
         #if changed, then update the data file with new dust
         if changed:
             ss_dict["centroid_share_list_rank{}".format(rank)]= dust_enc
             with open('centroid_rank_{}.pickle'.format(rank), 'wb') as handle:
                 pickle.dump(ss_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
             with open('result.pickle', 'wb') as handle:
-                pickle.dump(changed, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    
+                pickle.dump(True, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        else:
+            with open('result.pickle', 'wb') as handle:
+                pickle.dump(False, handle, protocol=pickle.HIGHEST_PROTOCOL)
     #The verify is still incorrect, I'll fix it and test if the code works correctly
     @mpc.run_multiprocess(world_size=2)
     def verify_compare(self):
@@ -113,10 +123,11 @@ class compare_radius(object):
             dist_dict = pickle.load(handle)
         dist_enc = dist_dict["distance_share_list_rank{}".format(rank)]
 
+        n_dust = len(dist_enc)
         #Verify each distance
         if rank == 0:
             print("=========Start of Verification========")
-        for i in range(self.n_dust):
+        for i in range(n_dust):
             for j in range(self.n_point):
                 gt_dist = dist_enc[i][j]
                 radius_tensor = torch.ones(gt_dist.shape)*self.radius

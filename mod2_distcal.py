@@ -38,12 +38,12 @@ class distance_calculation(object):
         self.radius = radius
         self.point_array, self.gt_centroid = point_gen([self.lower_x,self.upper_x], [self.lower_y,self.upper_y], self.n_center, self.n_point, radius = self.radius, if_plot = if_plot)
         self.dust_array = sample_dust(self.point_array, self.n_dust)
-        if if_plot:
-            x, y = self.dust_array.T
-            plt.scatter(x, y, marker="*", s=256, color = "m")
-            plt.xlim(self.lower_x,  self.upper_x)
-            plt.ylim(self.lower_y,  self.upper_y)
-            plt.show()
+        # if if_plot:
+        #     x, y = self.dust_array.T
+        #     plt.scatter(x, y, marker="*", s=256, color = "m")
+        #     plt.xlim(self.lower_x,  self.upper_x)
+        #     plt.ylim(self.lower_y,  self.upper_y)
+        #     plt.show()
 
     @mpc.run_multiprocess(world_size=2) # Two process will run the identical code below:
     def enc(self, verify = False):
@@ -85,7 +85,34 @@ class distance_calculation(object):
         return_dict2["centroid_share_list_rank{}".format(rank)] = dust_share_list
         with open('centroid_rank_{}.pickle'.format(rank), 'wb') as handle:
             pickle.dump(return_dict2, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
+    def print_centroid(self):
+        rank = comm.get().get_rank()
+        with open('centroid_rank_{}.pickle'.format(rank), 'rb') as handle:
+            ss_dict = pickle.load(handle)
+        centroid_share_list = ss_dict["centroid_share_list_rank{}".format(rank)]
+        n_dust = len(centroid_share_list)
+        print_out = "centroid: "
+        for i in range(n_dust):
+            print_out += " {}".format(str(centroid_share_list[i].get_plain_text()))
+        if rank == 0:
+            print(print_out)
 
+    @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
+    def get_plain_centroid(self):
+        rank = comm.get().get_rank()
+        with open('centroid_rank_{}.pickle'.format(rank), 'rb') as handle:
+            ss_dict = pickle.load(handle)
+        centroid_share_list = ss_dict["centroid_share_list_rank{}".format(rank)]
+        n_dust = len(centroid_share_list)
+        plain_centroid = []
+
+        print_out = "centroid: "
+        for i in range(n_dust):
+            plain_centroid.append(centroid_share_list[i].get_plain_text().tolist())
+        if rank == 0:
+            with open('plain_centroid.pickle', 'wb') as handle:
+                pickle.dump(plain_centroid, handle, protocol=pickle.HIGHEST_PROTOCOL)
     @mpc.run_multiprocess(world_size=2)  # Two process will run the identical code below:
     def discal(self, verify = False):
         rank = comm.get().get_rank()
@@ -99,11 +126,13 @@ class distance_calculation(object):
             ss_dict = pickle.load(handle)
         centroid_share_list = ss_dict["centroid_share_list_rank{}".format(rank)]
         
+
+        n_dust = len(centroid_share_list)
         # Verify the correctness of received shares.
         if verify:
             if rank == 0:
                 print("=========Start of Verification========")
-            for i in range(self.n_dust):
+            for i in range(n_dust):
                 dust_val = centroid_share_list[i].get_plain_text()
                 if rank == 0:
                     print("Dust to be Encrypted is: ", self.dust_array[i, :])
@@ -130,7 +159,7 @@ class distance_calculation(object):
 
         #Calculate Distance
         distance_share_list = []
-        for i in range(self.n_dust):
+        for i in range(n_dust):
             tmp_list = []
             for j in range(self.n_point):
                 dist_sum = (centroid_share_list[i] ** 2 +  point_share_list[j] ** 2 - 2 * (centroid_share_list[i] * point_share_list[j])).sum()
@@ -152,11 +181,11 @@ class distance_calculation(object):
             dist_dict = pickle.load(handle)
         distance_share_list = dist_dict["distance_share_list_rank{}".format(rank)]
 
-
+        n_dust = len(distance_share_list)
         #Verify each distance
         if rank == 0:
             print("=========Start of Verification========")
-        for i in range(self.n_dust):
+        for i in range(n_dust):
             for j in range(self.n_point):
                 if rank == 0:
                     gt_dist = sum((self.dust_array[i, :] - self.point_array[j, :]) ** 2)
