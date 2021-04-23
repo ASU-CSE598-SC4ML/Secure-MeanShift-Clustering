@@ -5,23 +5,27 @@ import crypten
 import crypten.mpc as mpc
 import crypten.communicator as comm 
 import pickle
+from mod1_generate import point_gen
 from mod2_distcal import distance_calculation
 from mod3_compare import compare_radius
 from mod4_elimcomm import eliminate_common
 from matplotlib import pyplot as plt
+from sklearn.cluster import MeanShift
+import time
 class meanshift(object):
-    def __init__(self, n_point, radius, n_center = 5, n_dust = 10, verify = False):
-        self.n_point = n_point # Random data generator parameters
+    def __init__(self, point_array, radius = 0.1, n_dust = 8, verify = False):
+        self.point_array = point_array
+        self.n_point = point_array.shape[0]
         self.radius = radius # Mean-shift Clustering parameters
-        self.n_center = n_center # Random data generator parameters
         self.n_dust = n_dust # Dust Heuristic parameters, also used to track the number of centroid
         self.Plot_and_GT = True # Show point cloud and ground-truth mean clustering using sklearn
         self.verify_pointenc = verify # Show point cloud is correctly encrypted
         self.verify_distcal = verify # Show distance calculation is correct
         self.verify_compare = verify # Show distance compare is correct
+
     def fit(self):
-        dist_cal1 = distance_calculation(n_point = self.n_point, n_dust = self.n_dust, 
-                        n_center = self.n_center, radius = self.radius, if_plot = self.Plot_and_GT)
+
+        dist_cal1 = distance_calculation(self.point_array, n_dust = self.n_dust, radius = self.radius, if_plot = self.Plot_and_GT)
         
         compare_radius1 = compare_radius(self.radius, self.n_point)
         eliminate_common1 = eliminate_common()
@@ -51,20 +55,37 @@ class meanshift(object):
         dist_cal1.get_plain_centroid()
         with open('plain_centroid.pickle', 'rb') as handle:
             plain_centroid = np.asarray(pickle.load(handle))
-        print("Final centroid is ", plain_centroid)
-        print("Ground Truth centroid is ", dist_cal1.gt_centroid)
-        x, y = dist_cal1.gt_centroid.T
-        plt.scatter(x, y, marker="X", s=128, color = "k")
-        x, y = plain_centroid.T
-        plt.scatter(x, y, marker="X", s=128, color = "b")
-        plt.xlim(0.0,  1.0)
-        plt.ylim(0.0,  1.0)
-        plt.show()
-        # plot
-n_point = 100
-radius = 0.1
-ms = meanshift(n_point, radius)
-ms.fit()
-# %%
+        
 
-# if __name__ == '__main__':
+        return plain_centroid
+
+
+if __name__ == '__main__':
+    n_point = 200
+    radius = 0.1
+    point_array = point_gen([0.0,1.0], [0.0,1.0], n_centers = 8, n_points = n_point, radius = radius, if_plot = True)
+    ms = meanshift(point_array, radius)
+    start_time = time.time()
+    plain_centroid = ms.fit()
+    print("time cost is ", time.time() - start_time)
+
+    #Call sklearn meanshift to get the ground-truth centroids
+    clustering = MeanShift(bandwidth=0.2).fit(point_array)
+
+    #Plot Ground-Truth Clustering Center
+    gt_centroid = clustering.cluster_centers_
+
+    print("Final centroid is ", plain_centroid)
+    print("Ground Truth centroid is ", gt_centroid)
+
+    x, y = gt_centroid.T
+    plt.scatter(x, y, marker="X", s=128, color = "k") #balck x is the ground-truth
+    x, y = plain_centroid.T
+    plt.scatter(x, y, marker="X", s=128, color = "b") #blue is ours
+    plt.xlim(0.0,  1.0)
+    plt.ylim(0.0,  1.0)
+    plt.show()
+    plt.savefig('cluster_results.png')
+
+    # plot
+# %%

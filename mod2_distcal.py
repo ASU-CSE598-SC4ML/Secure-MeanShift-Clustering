@@ -25,18 +25,18 @@ def sample_dust(point_array, n_dusts):
     return point_array[sample_idx]
 
 class distance_calculation(object):
-    def __init__(self, n_point = 2, n_dust = 1, n_center = 1, radius = 0.1, if_plot = True):
+    def __init__(self, point_array, n_dust = 1, radius = 0.1, if_plot = True):
         crypten.init()
         torch.set_num_threads(1)
         self.upper_x = 1
         self.lower_x = 0
         self.upper_y = 1
         self.lower_y = 0
-        self.n_point = n_point
+        self.n_point = point_array.shape[0]
         self.n_dust = n_dust
-        self.n_center = n_center
         self.radius = radius
-        self.point_array, self.gt_centroid = point_gen([self.lower_x,self.upper_x], [self.lower_y,self.upper_y], self.n_center, self.n_point, radius = self.radius, if_plot = if_plot)
+        self.point_array = point_array
+        # point_gen([self.lower_x,self.upper_x], [self.lower_y,self.upper_y], self.n_center, self.n_point, radius = self.radius, if_plot = if_plot)
         self.dust_array = sample_dust(self.point_array, self.n_dust)
         # if if_plot:
         #     x, y = self.dust_array.T
