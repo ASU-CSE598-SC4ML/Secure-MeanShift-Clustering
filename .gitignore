@@ -7,6 +7,8 @@ __pycache__/
 *.so
 *.pickle
 .vscode
+.log
+/*.png
 # Distribution / packaging
 .Python
 build/

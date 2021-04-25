@@ -12,6 +12,25 @@ from mod4_elimcomm import eliminate_common
 from matplotlib import pyplot as plt
 from sklearn.cluster import MeanShift
 import time
+import argparse
+import logging
+import sys
+formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+from datetime import datetime
+def setup_logger(name, log_file, level=logging.INFO, console_out = False):
+    """To setup as many loggers as you want"""
+
+    handler = logging.FileHandler(log_file, mode='w')
+    handler.setFormatter(formatter)
+
+    logger = logging.getLogger(name)
+    logger.setLevel(level)
+    logger.addHandler(handler)
+    if console_out:
+        stdout_handler = logging.StreamHandler(sys.stdout)
+        logger.addHandler(stdout_handler)
+    return logger
+
 class meanshift(object):
     def __init__(self, point_array, radius = 0.1, n_dust = 8, verify = False):
         self.point_array = point_array
@@ -63,14 +82,22 @@ class meanshift(object):
 
 
 if __name__ == '__main__':
-    n_point = 100
-    n_dust = 8
-    radius = 0.1
-    point_array = point_gen([0.0,1.0], [0.0,1.0], n_centers = 8, n_points = n_point, radius = radius, if_plot = True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n_dust', type=int, default=8)
+    parser.add_argument('--n_point', type=int, default=100)
+    parser.add_argument('--n_centers', type=int, default=8)
+    parser.add_argument('--radius', type=float, default=0.1)
+    args = parser.parse_args()
+    n_point = args.n_point
+    n_dust = args.n_dust
+    radius = args.radius
+    log_file = 'test_point{}_dust{}_radius{}_center{}_{}.log'.format(n_point, n_dust, radius, args.n_centers, datetime.today().strftime('%m%d%H%M'))
+    logger = setup_logger('test_logger', log_file, level = logging.DEBUG, console_out = True)
+    point_array = point_gen([0.0,1.0], [0.0,1.0], n_centers = args.n_centers, n_points = n_point, radius = radius, if_plot = True)
     ms = meanshift(point_array, radius, n_dust)
     plain_centroid, iter_time_list = ms.fit()
-    print("Overall time cost is {:1.4f}s for total of {} iterations!".format(sum(iter_time_list), len(iter_time_list)))
-    print("Average time cost per iteration is {:1.4f}s!".format(sum(iter_time_list)/len(iter_time_list)))
+    logger.debug("Overall time cost is {:1.4f}s for total of {} iterations!".format(sum(iter_time_list), len(iter_time_list)))
+    logger.debug("Average time cost per iteration is {:1.4f}s!".format(sum(iter_time_list)/len(iter_time_list)))
 
     #Call sklearn meanshift to get the ground-truth centroids
     clustering = MeanShift(bandwidth=0.2).fit(point_array)
@@ -78,8 +105,8 @@ if __name__ == '__main__':
     #Plot Ground-Truth Clustering Center
     gt_centroid = clustering.cluster_centers_
 
-    print("Final centroid is ", plain_centroid)
-    print("Ground Truth centroid is ", gt_centroid)
+    logger.debug("Final centroid is " + str(plain_centroid))
+    logger.debug("Ground Truth centroid is " + str(gt_centroid))
 
     x, y = gt_centroid.T
     plt.scatter(x, y, marker="X", s=128, color = "k") #balck x is the ground-truth
@@ -88,7 +115,7 @@ if __name__ == '__main__':
     plt.xlim(0.0,  1.0)
     plt.ylim(0.0,  1.0)
     plt.show()
-    plt.savefig('cluster_results.png')
+    plt.savefig('cluster_results_{}.png'.format(datetime.today().strftime('%m%d%H%M')))
 
     # plot
 # %%
