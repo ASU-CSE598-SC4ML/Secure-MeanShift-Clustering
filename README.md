@@ -43,6 +43,10 @@ Disclaimer: Tested on several different Machines.
 
 ### For the explanation for module 3 and 4, please check our report.
 
+### Project Presentation Slides ###
+
+https://docs.google.com/presentation/d/1gPopulOS146C-KavFN8tpSlnDy9QT6ob4QylN7QjYtI/edit?usp=sharing
+
 ## References
 <a id="1">[1]</a> 
 Cheon, Jung Hee, Duhyeong Kim, and Jai Hyun Park. "Towards a practical cluster analysis over encrypted data." International Conference on Selected Areas in Cryptography. Springer, Cham, 2019.
