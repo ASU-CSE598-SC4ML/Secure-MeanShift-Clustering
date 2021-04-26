@@ -5,9 +5,9 @@ n_dust=8
 n_center=8
 radius=0.1
 
-for iter_time in 0
+for iter_time in 0 1 2
 do
-    for n_point in 1000
+    for n_center in 8
     do
         python main.py --n_point=${n_point} --n_dust=${n_dust} --n_center=${n_center} --radius=${radius}
     done
