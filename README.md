@@ -1,5 +1,5 @@
 # crypten_ms
-Implementation of a MPC-based Secure MeanShift Algorithm using Crypten
+Implementation of a MPC-based Secure MeanShift Algorithm using Crypten.
 
 
 ## Requirement
@@ -17,11 +17,11 @@ crypten, scikit-learn, matplotlib
 
 Disclaimer: Tested on several different Machines.
 
-### To Run
+### To Run (adjust settings in run.sh)
 
     conda activate crypten
 
-    python main.py
+    bash run.sh
 
 ***
 
@@ -41,6 +41,7 @@ Disclaimer: Tested on several different Machines.
 
 2. Calculate the distance between point and dusts. Both are in the form of secret share.
 
+### For the explanation for module 3 and 4, please check our report.
 
 ## References
 <a id="1">[1]</a> 
