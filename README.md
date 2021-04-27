@@ -1,4 +1,4 @@
-# crypten_ms
+# Secure MeanShift Algorithm
 Implementation of a MPC-based Secure MeanShift Algorithm using Crypten.
 
 
